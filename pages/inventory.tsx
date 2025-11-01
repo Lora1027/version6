@@ -1,5 +1,4 @@
-
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AuthGate from '../components/AuthGate'
 import Nav from '../components/Nav'
 import { supabase } from '../lib/supabaseClient'
@@ -12,6 +11,7 @@ export default function Inventory(){
   const [email, setEmail] = useState<string|null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [msg, setMsg] = useState('')
+  const [editRow, setEditRow] = useState<Item | null>(null)
 
   async function load(){
     const me = await supabase.auth.getUser()
@@ -26,10 +26,10 @@ export default function Inventory(){
     e.preventDefault()
     const f = new FormData(e.target as HTMLFormElement)
     const { error } = await supabase.from('inventory').insert({
-      sku: f.get('sku') as string,
-      name: f.get('name') as string,
-      unit_cost: Number(f.get('unit_cost')),
-      qty_on_hand: Number(f.get('qty_on_hand'))
+      sku: String(f.get('sku')||''),
+      name: String(f.get('name')||''),
+      unit_cost: Number(f.get('unit_cost')||0),
+      qty_on_hand: Number(f.get('qty_on_hand')||0)
     } as any)
     if (error) { alert('Save failed: ' + error.message); return; }
     ;(e.target as HTMLFormElement).reset()
@@ -59,15 +59,27 @@ export default function Inventory(){
     }
   }
 
+  async function saveEdit(){
+    if(!editRow) return
+    const { id, ...rest } = editRow
+    const { error } = await supabase.from('inventory').update(rest as any).eq('id', id)
+    if(error){ alert('Update failed: ' + error.message); return; }
+    setEditRow(null)
+    load()
+  }
+
+  async function remove(id:string){
+    if(!confirm('Delete this item?')) return
+    const { error } = await supabase.from('inventory').delete().eq('id', id)
+    if(error){ alert('Delete failed: ' + error.message); return; }
+    if(editRow?.id === id) setEditRow(null)
+    load()
+  }
+
   const rowsForExport = useMemo(() => items.map(x => ({
     sku: x.sku, name: x.name, unit_cost: x.unit_cost, qty_on_hand: x.qty_on_hand,
     total_value: x.unit_cost * x.qty_on_hand, created_at: x.created_at
   })), [items])
-
-  function handleExport(){
-    downloadCSV('inventory_export.csv', rowsForExport)
-  }
-  function handlePrint(){ window.print() }
 
   return (
     <AuthGate>
@@ -89,24 +101,25 @@ export default function Inventory(){
           <input className="no-print" type="file" accept=".csv" onChange={bulkUpload} />
           <p className="small">Expected columns: <code>sku,name,unit_cost,qty_on_hand</code></p>
           {msg && <p className="small">{msg}</p>}
+          <div style={{display:'flex', gap:8, marginTop:8}}>
+            <button className="btn no-print" onClick={() => downloadCSV('inventory_export.csv', rowsForExport)}>Download CSV (Excel)</button>
+            <button className="btn secondary no-print" onClick={() => window.print()}>Print</button>
+          </div>
         </div>
 
         <div className="card">
-          <div style={{display:'flex', gap:8, alignItems:'center'}}>
-            <h2 style={{marginRight:'auto'}}>Inventory</h2>
-            <button className="btn no-print" onClick={handleExport}>Download CSV (Excel)</button>
-            <button className="btn secondary no-print" onClick={handlePrint}>Print</button>
-          </div>
+          <h2>Inventory</h2>
           <table className="table">
-            <thead><tr><th>SKU</th><th>Name</th><th>Unit Cost</th><th>Qty</th><th>Value</th><th>Added</th></tr></thead>
+            <thead><tr><th>SKU</th><th>Name</th><th>Unit Cost</th><th>Qty</th><th>Value</th><th>Added</th><th className="no-print">Actions</th></tr></thead>
             <tbody>
               {items.map(x => (
-                <tr key={x.id}><td>{x.sku}</td><td>{x.name}</td><td>{fmt(x.unit_cost)}</td><td>{x.qty_on_hand}</td><td>{fmt(x.unit_cost * x.qty_on_hand)}</td><td>{new Date(x.created_at).toLocaleDateString()}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </AuthGate>
-  )
-}
+                <tr key={x.id}>
+                  <td>{x.sku}</td>
+                  <td>{x.name}</td>
+                  <td>{fmt(x.unit_cost)}</td>
+                  <td>{x.qty_on_hand}</td>
+                  <td>{fmt(x.unit_cost * x.qty_on_hand)}</td>
+                  <td>{new Date(x.created_at).toLocaleDateString()}</td>
+                  <td className="no-print">
+                    <button className="btn secondary" style={{marginRight:6}} onClick={() => setEditRow({...x})}>Edit</button>
+                    <button className="btn" onClick={()
