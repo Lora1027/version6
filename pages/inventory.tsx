@@ -34,9 +34,7 @@ export default function Inventory() {
     }
     setItems((data as Item[]) || [])
   }
-  useEffect(() => {
-    load()
-  }, [])
+  useEffect(() => { load() }, [])
 
   async function addSingle(e: any) {
     e.preventDefault()
@@ -47,20 +45,17 @@ export default function Inventory() {
       unit_cost: Number(f.get('unit_cost') || 0),
       qty_on_hand: Number(f.get('qty_on_hand') || 0),
     } as any)
-    if (error) {
-      alert('Save failed: ' + error.message)
-      return
-    }
+    if (error) { alert('Save failed: ' + error.message); return }
     ;(e.target as HTMLFormElement).reset()
     load()
   }
 
   function parseCSV(text: string) {
     const lines = text.trim().split(/\r?\n/)
-    const rows = lines.map((l) => l.split(',').map((x) => x.trim()))
+    const rows = lines.map(l => l.split(',').map(x => x.trim()))
     const [h, ...data] = rows
     if (!h || h.length < 4) throw new Error('Invalid header. Expected sku,name,unit_cost,qty_on_hand')
-    return data.map((r) => ({
+    return data.map(r => ({
       sku: r[0],
       name: r[1],
       unit_cost: Number(r[2] || 0),
@@ -75,10 +70,7 @@ export default function Inventory() {
     try {
       const records = parseCSV(text).slice(0, 2000)
       const { error } = await supabase.from('inventory').insert(records as any[])
-      if (error) {
-        alert('Bulk upload failed: ' + error.message)
-        return
-      }
+      if (error) { alert('Bulk upload failed: ' + error.message); return }
       setMsg(`Uploaded ${records.length} items.`)
       load()
     } catch (err: any) {
@@ -90,10 +82,7 @@ export default function Inventory() {
     if (!editRow) return
     const { id, ...rest } = editRow
     const { error } = await supabase.from('inventory').update(rest as any).eq('id', id)
-    if (error) {
-      alert('Update failed: ' + error.message)
-      return
-    }
+    if (error) { alert('Update failed: ' + error.message); return }
     setEditRow(null)
     load()
   }
@@ -101,26 +90,19 @@ export default function Inventory() {
   async function remove(id: string) {
     if (!confirm('Delete this item?')) return
     const { error } = await supabase.from('inventory').delete().eq('id', id)
-    if (error) {
-      alert('Delete failed: ' + error.message)
-      return
-    }
+    if (error) { alert('Delete failed: ' + error.message); return }
     if (editRow?.id === id) setEditRow(null)
     load()
   }
 
-  const rowsForExport = useMemo(
-    () =>
-      items.map((x) => ({
-        sku: x.sku,
-        name: x.name,
-        unit_cost: x.unit_cost,
-        qty_on_hand: x.qty_on_hand,
-        total_value: x.unit_cost * x.qty_on_hand,
-        created_at: x.created_at,
-      })),
-    [items]
-  )
+  const rowsForExport = useMemo(() => items.map(x => ({
+    sku: x.sku,
+    name: x.name,
+    unit_cost: x.unit_cost,
+    qty_on_hand: x.qty_on_hand,
+    total_value: x.unit_cost * x.qty_on_hand,
+    created_at: x.created_at,
+  })), [items])
 
   return (
     <AuthGate>
@@ -154,17 +136,11 @@ export default function Inventory() {
         <div className="card">
           <h2>Bulk Upload (CSV)</h2>
           <input className="no-print" type="file" accept=".csv" onChange={bulkUpload} />
-          <p className="small">
-            Expected columns: <code>sku,name,unit_cost,qty_on_hand</code>
-          </p>
+          <p className="small">Expected columns: <code>sku,name,unit_cost,qty_on_hand</code></p>
           {msg && <p className="small">{msg}</p>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button className="btn no-print" onClick={() => downloadCSV('inventory_export.csv', rowsForExport)}>
-              Download CSV (Excel)
-            </button>
-            <button className="btn secondary no-print" onClick={() => window.print()}>
-              Print
-            </button>
+            <button className="btn no-print" onClick={() => downloadCSV('inventory_export.csv', rowsForExport)}>Download CSV (Excel)</button>
+            <button className="btn secondary no-print" onClick={() => window.print()}>Print</button>
           </div>
         </div>
 
@@ -183,7 +159,7 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {items.map((x) => (
+              {items.map(x => (
                 <tr key={x.id}>
                   <td>{x.sku}</td>
                   <td>{x.name}</td>
@@ -192,20 +168,14 @@ export default function Inventory() {
                   <td>{fmt(x.unit_cost * x.qty_on_hand)}</td>
                   <td>{new Date(x.created_at).toLocaleDateString()}</td>
                   <td className="no-print">
-                    <button className="btn secondary" style={{ marginRight: 6 }} onClick={() => setEditRow({ ...x })}>
-                      Edit
-                    </button>
-                    <button className="btn" onClick={() => remove(x.id)}>
-                      Delete
-                    </button>
+                    <button className="btn secondary" style={{ marginRight: 6 }} onClick={() => setEditRow({ ...x })}>Edit</button>
+                    <button className="btn" onClick={() => remove(x.id)}>Delete</button>
                   </td>
                 </tr>
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="small">
-                    No items yet.
-                  </td>
+                  <td colSpan={7} className="small">No items yet.</td>
                 </tr>
               )}
             </tbody>
@@ -218,45 +188,28 @@ export default function Inventory() {
             <div className="row">
               <div style={{ gridColumn: 'span 3' }}>
                 <label>SKU</label>
-                <input className="input" value={editRow.sku} onChange={(e) => setEditRow({ ...editRow, sku: e.target.value })} />
+                <input className="input" value={editRow.sku} onChange={e => setEditRow({ ...editRow, sku: e.target.value })} />
               </div>
               <div style={{ gridColumn: 'span 5' }}>
                 <label>Name</label>
-                <input className="input" value={editRow.name} onChange={(e) => setEditRow({ ...editRow, name: e.target.value })} />
+                <input className="input" value={editRow.name} onChange={e => setEditRow({ ...editRow, name: e.target.value })} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label>Unit Cost</label>
-                <input
-                  className="input"
-                  type="number"
-                  step="0.01"
-                  value={editRow.unit_cost}
-                  onChange={(e) => setEditRow({ ...editRow, unit_cost: Number(e.target.value) })}
-                />
+                <input className="input" type="number" step="0.01" value={editRow.unit_cost} onChange={e => setEditRow({ ...editRow, unit_cost: Number(e.target.value) })} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label>Qty</label>
-                <input
-                  className="input"
-                  type="number"
-                  step="1"
-                  value={editRow.qty_on_hand}
-                  onChange={(e) => setEditRow({ ...editRow, qty_on_hand: Number(e.target.value) })}
-                />
+                <input className="input" type="number" step="1" value={editRow.qty_on_hand} onChange={e => setEditRow({ ...editRow, qty_on_hand: Number(e.target.value) })} />
               </div>
               <div style={{ gridColumn: 'span 12', display: 'flex', gap: 8 }}>
-                <button className="btn" onClick={saveEdit}>
-                  Update
-                </button>
-                <button className="btn secondary" onClick={() => setEditRow(null)}>
-                  Cancel
-                </button>
+                <button className="btn" onClick={saveEdit}>Update</button>
+                <button className="btn secondary" onClick={() => setEditRow(null)}>Cancel</button>
               </div>
             </div>
           </div>
-               )}
+        )}
       </div>
     </AuthGate>
   )
 }
-
