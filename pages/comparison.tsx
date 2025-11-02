@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from 'react'
 import AuthGate from '../components/AuthGate'
 import Nav from '../components/Nav'
@@ -12,7 +13,6 @@ type Tx = {
   amount: number
 }
 
-/** Inclusive day count between two yyyy-mm-dd strings */
 function daysBetween(from?: string, to?: string) {
   if (!from || !to) return 0
   const a = new Date(from + 'T00:00:00')
@@ -21,36 +21,28 @@ function daysBetween(from?: string, to?: string) {
   const d = Math.floor(ms / (1000 * 60 * 60 * 24)) + 1
   return d > 0 ? d : 0
 }
-/** Safe percent delta helper */
 function pctDelta(a: number, b: number) {
   if (!isFinite(b) || b === 0) return 0
   return ((a - b) / b) * 100
 }
 function sum(ns: number[]) { return ns.reduce((x, y) => x + y, 0) }
 
-/** KPI calculator for a set of rows within a known date range */
 function makeKPIs(rows: Tx[], from?: string, to?: string) {
   const revenue = sum(rows.filter(r => r.type === 'income').map(r => r.amount))
   const cogs = sum(rows.filter(r => (r.category || '').toLowerCase() === 'cogs').map(r => r.amount))
   const grossProfit = revenue - cogs
   const expense = sum(rows.filter(r => r.type === 'expense').map(r => r.amount))
   const net = revenue - expense
-  const days = Math.max(1, daysBetween(from, to)) // avoid divide-by-zero
-
-  const avgSales = revenue / days                // average daily sales
-  const avgGrossProfit = grossProfit / days      // average daily gross profit
-
+  const days = Math.max(1, daysBetween(from, to))
+  const avgSales = revenue / days
+  const avgGrossProfit = grossProfit / days
   return { revenue, cogs, grossProfit, expense, net, days, avgSales, avgGrossProfit }
 }
 
 export default function Comparison() {
   const [email, setEmail] = useState<string | null>(null)
-
-  // Date pickers
   const [rangeA, setA] = useState<{ from?: string, to?: string }>({})
   const [rangeB, setB] = useState<{ from?: string, to?: string }>({})
-
-  // Data
   const [rowsA, setRowsA] = useState<Tx[]>([])
   const [rowsB, setRowsB] = useState<Tx[]>([])
 
@@ -84,88 +76,62 @@ export default function Comparison() {
     <AuthGate>
       <Nav email={email} />
       <div className="container">
-
-        {/* Range pickers */}
         <div className="card">
           <h2>Pick Two Ranges to Compare</h2>
           <div className="row">
             <div style={{ gridColumn: 'span 6' }}>
               <h3>Range A</h3>
               <label>From</label>
-              <input className="input" type="date"
-                value={rangeA.from || ''} onChange={e => setA({ ...rangeA, from: e.target.value })} />
+              <input className="input" type="date" value={rangeA.from || ''} onChange={e => setA({ ...rangeA, from: e.target.value })} />
               <label>To</label>
-              <input className="input" type="date"
-                value={rangeA.to || ''} onChange={e => setA({ ...rangeA, to: e.target.value })} />
+              <input className="input" type="date" value={rangeA.to || ''} onChange={e => setA({ ...rangeA, to: e.target.value })} />
               <div style={{ marginTop: 8 }}>
                 <button className="btn" onClick={() => load('A')}>Load A</button>
-                <span style={{ marginLeft: 8, ...small }}>Days: {A.days}</span>
               </div>
             </div>
-
             <div style={{ gridColumn: 'span 6' }}>
               <h3>Range B</h3>
               <label>From</label>
-              <input className="input" type="date"
-                value={rangeB.from || ''} onChange={e => setB({ ...rangeB, from: e.target.value })} />
+              <input className="input" type="date" value={rangeB.from || ''} onChange={e => setB({ ...rangeB, from: e.target.value })} />
               <label>To</label>
-              <input className="input" type="date"
-                value={rangeB.to || ''} onChange={e => setB({ ...rangeB, to: e.target.value })} />
+              <input className="input" type="date" value={rangeB.to || ''} onChange={e => setB({ ...rangeB, to: e.target.value })} />
               <div style={{ marginTop: 8 }}>
                 <button className="btn" onClick={() => load('B')}>Load B</button>
-                <span style={{ marginLeft: 8, ...small }}>Days: {B.days}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* KPI cards */}
         <div className="card">
           <h2>KPIs</h2>
           <div className="kpi">
-
-            {/* Average Sales */}
             <div className="card">
               <h3>Average Sales (Daily)</h3>
               <div>{fmt(A.avgSales)} vs {fmt(B.avgSales)}</div>
               <div style={small}>Growth: {avgSalesGrowthPct.toFixed(1)}%</div>
             </div>
-
-            {/* Average Gross Profit */}
             <div className="card">
               <h3>Average Gross Profit (Daily)</h3>
               <div>{fmt(A.avgGrossProfit)} vs {fmt(B.avgGrossProfit)}</div>
               <div style={small}>Growth: {avgGrossProfitGrowthPct.toFixed(1)}%</div>
             </div>
-
-            {/* Revenue total */}
             <div className="card">
               <h3>Total Sales (Revenue)</h3>
               <div>{fmt(A.revenue)} vs {fmt(B.revenue)}</div>
               <div style={small}>Growth: {salesGrowthPct.toFixed(1)}%</div>
             </div>
-
-            {/* Gross Profit total */}
             <div className="card">
               <h3>Gross Profit</h3>
               <div>{fmt(A.grossProfit)} vs {fmt(B.grossProfit)}</div>
               <div style={small}>Growth: {grossProfitGrowthPct.toFixed(1)}%</div>
             </div>
-
-            {/* Net Profit */}
             <div className="card">
               <h3>Net Profit</h3>
               <div>{fmt(A.net)} vs {fmt(B.net)}</div>
               <div style={small}>Growth: {netGrowthPct.toFixed(1)}%</div>
             </div>
-
           </div>
-          <p className="small" style={{ marginTop: 8 }}>
-            <b>Notes:</b> “COGS” is detected when the transaction <code>category</code> equals <code>cogs</code> (case-insensitive).
-            Average metrics are calculated per calendar day in the selected range (inclusive).
-          </p>
         </div>
-
       </div>
     </AuthGate>
   )
